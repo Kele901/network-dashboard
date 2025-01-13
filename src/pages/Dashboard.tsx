@@ -1,7 +1,6 @@
-import React from 'react';
-import { useEffect, useState } from 'react';
-import { Grid, Paper, Typography, CircularProgress, Card, CardContent, List, ListItem, ListItemText, Divider, Box, Chip } from '@mui/material';
-import { Line, Doughnut } from 'react-chartjs-2';
+import React, { useState, useEffect } from 'react';
+import { Box, Card, CardContent, Typography, Grid, CircularProgress, Alert, Tabs, Tab, Paper } from '@mui/material';
+import { Line, Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,8 +10,10 @@ import {
   Title,
   Tooltip,
   Legend,
-  ArcElement
+  ArcElement,
 } from 'chart.js';
+import DeviceManagement from '../components/DeviceManagement';
+import SecurityMonitoring from '../components/SecurityMonitoring';
 
 ChartJS.register(
   CategoryScale,
@@ -25,171 +26,96 @@ ChartJS.register(
   ArcElement
 );
 
-interface ConnectedDevice {
-  id: string;
-  name: string;
-  type: 'laptop' | 'smartphone' | 'tablet' | 'iot' | 'other';
-  status: 'online' | 'idle' | 'offline';
-  ipAddress: string;
-  lastSeen: string;
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
 }
 
-interface SecurityAlert {
-  id: number;
-  type: string;
-  severity: 'high' | 'medium' | 'low';
-  message: string;
-  timestamp: string;
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`dashboard-tabpanel-${index}`}
+      aria-labelledby={`dashboard-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
 }
 
-interface AccessPoint {
-  id: string;
-  name: string;
-  location: string;
-  status: 'active' | 'inactive';
-  clients: number;
-  channel: number;
-  band: '2.4GHz' | '5GHz';
-  signalStrength: number;
-  lastReboot: string;
-}
-
-export default function Dashboard() {
+const Dashboard = () => {
   const [loading, setLoading] = useState(true);
-  const [healthData, setHealthData] = useState<any>(null);
-  const [latencyData, setLatencyData] = useState<any>(null);
-  const [connectedDevices, setConnectedDevices] = useState<ConnectedDevice[]>([]);
-  const [trafficData, setTrafficData] = useState<any>(null);
-  const [deviceTypes, setDeviceTypes] = useState<any>(null);
-  const [securityAlerts, setSecurityAlerts] = useState<SecurityAlert[]>([]);
-  const [hqInfo, setHqInfo] = useState({
-    name: 'London HQ',
-    location: 'London, United Kingdom',
-    timezone: 'GMT+0',
-    networkStatus: 'active',
-    ipAddress: '192.168.1.1'
+  const [error, setError] = useState<string | null>(null);
+  const [tabValue, setTabValue] = useState(0);
+  const [networkHealth] = useState({
+    status: 'healthy',
+    uptime: '99.9%',
+    bandwidth: '1.2 Gbps',
+    activeConnections: 245
   });
-  const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
+
+  const [deviceTypes] = useState({
+    labels: ['Laptops', 'Smartphones', 'Tablets', 'IoT Devices', 'Servers'],
+    data: [30, 45, 15, 25, 10]
+  });
+
+  const [bandwidthUsage] = useState({
+    labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+    download: [20, 15, 60, 85, 75, 45],
+    upload: [10, 8, 30, 40, 35, 20]
+  });
+
+  const [locationInfo] = useState({
+    name: 'London HQ',
+    address: 'Central London, UK',
+    timezone: 'GMT/BST',
+    coordinates: '51.5074° N, 0.1278° W',
+    networkRegion: 'Europe/London',
+    buildingType: 'Corporate Office',
+    floorCount: 5,
+    networkZone: 'Primary Data Center',
+    ipAddress: '192.168.1.100'
+  });
+
+  const [recentAlerts] = useState([
+    {
+      id: 1,
+      severity: 'error',
+      message: 'High CPU usage detected on Server 3',
+      timestamp: '10 minutes ago'
+    },
+    {
+      id: 2,
+      severity: 'warning',
+      message: 'Bandwidth threshold reached on Floor 2',
+      timestamp: '25 minutes ago'
+    },
+    {
+      id: 3,
+      severity: 'info',
+      message: 'System update completed successfully',
+      timestamp: '1 hour ago'
+    }
+  ]);
 
   useEffect(() => {
     const loadDashboardData = async () => {
       try {
-        // Mock data for now
-        setHealthData({
-          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-          values: [98, 97, 99, 96, 98, 97, 99]
-        });
-        
-        setLatencyData({
-          timestamps: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-          values: [15, 18, 12, 25, 14, 16, 13]
-        });
-
-        // Mock traffic data
-        setTrafficData({
-          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-          values: [120, 145, 132, 168, 140, 90, 110]
-        });
-
-        // Mock device types data
-        setDeviceTypes({
-          labels: ['Laptops', 'Smartphones', 'IoT Devices', 'Tablets', 'Others'],
-          data: [20, 12, 5, 3, 2]
-        });
-
-        // Mock security alerts
-        setSecurityAlerts([
-          {
-            id: 1,
-            type: 'Intrusion Detection',
-            severity: 'high',
-            message: 'Unusual login attempt detected',
-            timestamp: '2 mins ago'
-          },
-          {
-            id: 2,
-            type: 'Malware',
-            severity: 'medium',
-            message: 'Suspicious outbound traffic blocked',
-            timestamp: '15 mins ago'
-          },
-          {
-            id: 3,
-            type: 'System',
-            severity: 'low',
-            message: 'Firmware update available',
-            timestamp: '1 hour ago'
-          }
-        ]);
-
-        // Mock connected devices data
-        setConnectedDevices([
-          {
-            id: '1',
-            name: "John's Laptop",
-            type: 'laptop',
-            status: 'online',
-            ipAddress: '192.168.1.101',
-            lastSeen: 'Active now'
-          },
-          {
-            id: '2',
-            name: 'Reception iPad',
-            type: 'tablet',
-            status: 'online',
-            ipAddress: '192.168.1.102',
-            lastSeen: 'Active now'
-          },
-          {
-            id: '3',
-            name: 'Meeting Room Display',
-            type: 'iot',
-            status: 'idle',
-            ipAddress: '192.168.1.103',
-            lastSeen: '5 mins ago'
-          }
-        ]);
-
-        // Mock AP data
-        setAccessPoints([
-          {
-            id: 'ap1',
-            name: 'AP-Floor1-Main',
-            location: 'Main Office Area',
-            status: 'active',
-            clients: 15,
-            channel: 6,
-            band: '2.4GHz',
-            signalStrength: 85,
-            lastReboot: '7 days ago'
-          },
-          {
-            id: 'ap2',
-            name: 'AP-Floor1-Meeting',
-            location: 'Conference Rooms',
-            status: 'active',
-            clients: 8,
-            channel: 36,
-            band: '5GHz',
-            signalStrength: 92,
-            lastReboot: '3 days ago'
-          },
-          {
-            id: 'ap3',
-            name: 'AP-Floor2-East',
-            location: 'East Wing',
-            status: 'active',
-            clients: 12,
-            channel: 11,
-            band: '2.4GHz',
-            signalStrength: 78,
-            lastReboot: '5 days ago'
-          }
-        ]);
-
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-      } finally {
+        setLoading(true);
+        // Simulate API call delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to load dashboard data');
         setLoading(false);
       }
     };
@@ -197,363 +123,251 @@ export default function Dashboard() {
     loadDashboardData();
   }, []);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'online':
-        return '#4caf50';
-      case 'idle':
-        return '#ff9800';
-      case 'offline':
-        return '#f44336';
-      default:
-        return '#757575';
-    }
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'high':
-        return '#f44336';
-      case 'medium':
-        return '#ff9800';
-      case 'low':
-        return '#4caf50';
-      default:
-        return '#757575';
-    }
+  const deviceTypeChart = {
+    labels: deviceTypes.labels,
+    datasets: [
+      {
+        data: deviceTypes.data,
+        backgroundColor: [
+          '#FF6384',
+          '#36A2EB',
+          '#FFCE56',
+          '#4BC0C0',
+          '#9966FF'
+        ]
+      }
+    ]
   };
 
-  const getDeviceTypeIcon = (type: string) => {
-    switch (type) {
-      case 'laptop':
-        return '💻';
-      case 'smartphone':
-        return '📱';
-      case 'tablet':
-        return '📱';
-      case 'iot':
-        return '🔌';
-      default:
-        return '📱';
-    }
-  };
-
-  const getSignalStrengthColor = (strength: number) => {
-    if (strength >= 80) return '#4caf50';
-    if (strength >= 60) return '#ff9800';
-    return '#f44336';
+  const bandwidthChart = {
+    labels: bandwidthUsage.labels,
+    datasets: [
+      {
+        label: 'Download',
+        data: bandwidthUsage.download,
+        borderColor: '#36A2EB',
+        fill: false
+      },
+      {
+        label: 'Upload',
+        data: bandwidthUsage.upload,
+        borderColor: '#FF6384',
+        fill: false
+      }
+    ]
   };
 
   if (loading) {
-    return <CircularProgress />;
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box m={2}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
   }
 
   return (
-    <Grid container spacing={3} sx={{ p: 3 }}>
-      <Grid item xs={12} md={6}>
-        <Card sx={{ 
-          bgcolor: 'primary.main', 
-          color: 'primary.contrastText',
-          boxShadow: 3,
-          height: '100%'
-        }}>
-          <CardContent sx={{ p: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Box>
-                <Typography variant="h6" gutterBottom>Connected Devices</Typography>
-                <Typography variant="h4">{connectedDevices.length}</Typography>
-              </Box>
-              <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="body2">
-                  Online: {connectedDevices.filter(d => d.status === 'online').length}
-                </Typography>
-                <Typography variant="body2">
-                  Idle: {connectedDevices.filter(d => d.status === 'idle').length}
-                </Typography>
-              </Box>
-            </Box>
-            <List sx={{ 
-              bgcolor: 'primary.dark',
-              borderRadius: 1,
-              maxHeight: '200px',
-              overflow: 'auto'
-            }}>
-              {connectedDevices.map((device, index) => (
-                <React.Fragment key={device.id}>
-                  {index > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />}
-                  <ListItem sx={{ py: 1 }}>
-                    <ListItemText
-                      primary={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <span>{getDeviceTypeIcon(device.type)}</span>
-                          <Typography variant="body2">{device.name}</Typography>
-                          <Chip 
-                            label={device.status}
-                            size="small"
-                            sx={{ 
-                              bgcolor: getStatusColor(device.status),
-                              color: 'white',
-                              ml: 1,
-                              height: '20px'
-                            }}
-                          />
-                        </Box>
-                      }
-                      secondary={
-                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-                          {device.ipAddress} • {device.lastSeen}
-                        </Typography>
-                      }
-                    />
-                  </ListItem>
-                </React.Fragment>
-              ))}
-            </List>
-          </CardContent>
-        </Card>
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <Card sx={{ 
-          bgcolor: 'secondary.main', 
-          color: 'secondary.contrastText',
-          boxShadow: 3,
-          height: '100%'
-        }}>
-          <CardContent sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>Headquarters</Typography>
-            <Typography variant="h5" sx={{ mb: 2 }}>{hqInfo.name}</Typography>
-            <Typography variant="body1" sx={{ mb: 1 }}>📍 {hqInfo.location}</Typography>
-            <Typography variant="body1" sx={{ mb: 1 }}>🕒 {hqInfo.timezone}</Typography>
-            <Typography variant="body1" sx={{ mb: 1 }}>🌐 IP: {hqInfo.ipAddress}</Typography>
-            <Typography 
-              variant="body1" 
-              sx={{ 
-                color: hqInfo.networkStatus === 'active' ? '#4caf50' : '#f44336',
-                fontWeight: 'bold'
-              }}
-            >
-              ● Network {hqInfo.networkStatus.charAt(0).toUpperCase() + hqInfo.networkStatus.slice(1)}
-            </Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6">Network Health</Typography>
-          {healthData && (
-            <Line
-              data={{
-                labels: healthData.labels,
-                datasets: [{
-                  label: 'Health Score (%)',
-                  data: healthData.values,
-                  borderColor: '#4caf50',
-                  backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                  tension: 0.1,
-                  fill: true
-                }]
-              }}
-              options={{
-                responsive: true,
-                scales: {
-                  y: {
-                    min: 90,
-                    max: 100
-                  }
-                }
-              }}
-            />
-          )}
-        </Paper>
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6">Network Latency</Typography>
-          {latencyData && (
-            <Line
-              data={{
-                labels: latencyData.timestamps,
-                datasets: [{
-                  label: 'Latency (ms)',
-                  data: latencyData.values,
-                  borderColor: '#1976d2',
-                  backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                  tension: 0.1,
-                  fill: true
-                }]
-              }}
-              options={{
-                responsive: true,
-                scales: {
-                  y: {
-                    beginAtZero: true
-                  }
-                }
-              }}
-            />
-          )}
-        </Paper>
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6">Network Traffic</Typography>
-          {trafficData && (
-            <Line
-              data={{
-                labels: trafficData.labels,
-                datasets: [{
-                  label: 'Traffic (Mbps)',
-                  data: trafficData.values,
-                  borderColor: '#9c27b0',
-                  backgroundColor: 'rgba(156, 39, 176, 0.1)',
-                  tension: 0.1,
-                  fill: true
-                }]
-              }}
-              options={{
-                responsive: true,
-                scales: {
-                  y: {
-                    beginAtZero: true
-                  }
-                }
-              }}
-            />
-          )}
-        </Paper>
-      </Grid>
-      <Grid item xs={12} md={6}>
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6">Device Types</Typography>
-          {deviceTypes && (
-            <Doughnut
-              data={{
-                labels: deviceTypes.labels,
-                datasets: [{
-                  data: deviceTypes.data,
-                  backgroundColor: [
-                    '#1976d2',
-                    '#4caf50',
-                    '#ff9800',
-                    '#9c27b0',
-                    '#757575'
-                  ]
-                }]
-              }}
-              options={{
-                responsive: true,
-                plugins: {
-                  legend: {
-                    position: 'right'
-                  }
-                }
-              }}
-            />
-          )}
-        </Paper>
-      </Grid>
-      <Grid item xs={12}>
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6" gutterBottom>Access Points</Typography>
-          <Grid container spacing={2}>
-            {accessPoints.map((ap) => (
-              <Grid item xs={12} md={4} key={ap.id}>
-                <Card sx={{ bgcolor: 'background.paper', height: '100%' }}>
-                  <CardContent>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                      <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>{ap.name}</Typography>
-                      <Chip
-                        label={ap.status.toUpperCase()}
-                        size="small"
-                        sx={{
-                          bgcolor: ap.status === 'active' ? '#4caf50' : '#f44336',
-                          color: 'white',
-                          fontSize: '0.75rem'
-                        }}
-                      />
-                    </Box>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <Typography variant="body2" color="text.secondary">
-                        📍 Location: {ap.location}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        👥 Connected Clients: {ap.clients}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        📡 Channel: {ap.channel} ({ap.band})
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          📶 Signal Strength:
-                        </Typography>
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
-                            color: getSignalStrengthColor(ap.signalStrength),
-                            fontWeight: 'medium'
-                          }}
-                        >
-                          {ap.signalStrength}%
-                        </Typography>
-                      </Box>
-                      <Typography variant="body2" color="text.secondary">
-                        🔄 Last Reboot: {ap.lastReboot}
-                      </Typography>
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
+    <Box>
+      <Tabs value={tabValue} onChange={handleTabChange} sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tab label="Overview" />
+        <Tab label="Devices" />
+        <Tab label="Security" />
+      </Tabs>
+
+      <TabPanel value={tabValue} index={0}>
+        <Grid container spacing={3}>
+          {/* Network Health Overview */}
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Network Health</Typography>
+                <Typography variant="h4" color="primary">{networkHealth.uptime}</Typography>
+                <Typography color="textSecondary">Uptime</Typography>
+                <Box mt={2}>
+                  <Typography variant="body2">
+                    Status: {networkHealth.status}
+                  </Typography>
+                  <Typography variant="body2">
+                    Bandwidth: {networkHealth.bandwidth}
+                  </Typography>
+                  <Typography variant="body2">
+                    Active Connections: {networkHealth.activeConnections}
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
           </Grid>
-        </Paper>
-      </Grid>
-      <Grid item xs={12}>
-        <Paper sx={{ p: 1.5 }}>
-          <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'medium' }}>Security Alerts</Typography>
-          <List dense disablePadding>
-            {securityAlerts.map((alert, index) => (
-              <React.Fragment key={alert.id}>
-                {index > 0 && <Divider />}
-                <ListItem sx={{ py: 0.25 }}>
-                  <ListItemText
-                    sx={{ my: 0 }}
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Chip 
-                          label={alert.severity.toUpperCase()}
-                          size="small"
-                          sx={{ 
-                            bgcolor: getSeverityColor(alert.severity),
-                            color: 'white',
-                            minWidth: 45,
-                            height: '18px',
-                            '& .MuiChip-label': {
-                              px: 0.5,
-                              fontSize: '0.7rem',
-                              fontWeight: 'bold'
-                            }
-                          }}
-                        />
-                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, flex: 1 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                            {alert.type}:
-                          </Typography>
-                          <Typography variant="body2" sx={{ flex: 1 }}>
-                            {alert.message}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
-                            {alert.timestamp}
-                          </Typography>
-                        </Box>
+
+          {/* Recent Alerts Section */}
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Recent Alerts</Typography>
+                <Box>
+                  {recentAlerts.map((alert) => (
+                    <Alert 
+                      key={alert.id} 
+                      severity={alert.severity as 'error' | 'warning' | 'info' | 'success'}
+                      sx={{ mb: 1.5 }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2">{alert.message}</Typography>
+                        <Typography variant="caption" color="textSecondary" sx={{ ml: 2 }}>
+                          {alert.timestamp}
+                        </Typography>
                       </Box>
-                    }
-                  />
-                </ListItem>
-              </React.Fragment>
-            ))}
-          </List>
-        </Paper>
-      </Grid>
-    </Grid>
+                    </Alert>
+                  ))}
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Device Distribution */}
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Device Distribution</Typography>
+                <Box height={300}>
+                  <Pie data={deviceTypeChart} options={{ maintainAspectRatio: false }} />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Bandwidth Usage */}
+          <Grid item xs={12} md={6}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Bandwidth Usage</Typography>
+                <Box height={300}>
+                  <Line data={bandwidthChart} options={{ maintainAspectRatio: false }} />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Location Information */}
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+                  <Box>
+                    <Typography variant="h6" gutterBottom>
+                      Location Information
+                    </Typography>
+                    <Typography variant="h5" color="primary" gutterBottom>
+                      {locationInfo.name}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ 
+                    bgcolor: 'primary.main',
+                    color: 'primary.contrastText',
+                    p: 1, 
+                    borderRadius: 1,
+                    height: 'fit-content'
+                  }}>
+                    <Typography variant="body2">
+                      {locationInfo.networkZone}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={6}>
+                    <Paper sx={{ 
+                      p: 1.5, 
+                      bgcolor: 'background.default',
+                      border: 1,
+                      borderColor: 'divider'
+                    }}>
+                      <Typography variant="body2" color="textSecondary">
+                        Building Type
+                      </Typography>
+                      <Typography variant="body1">
+                        {locationInfo.buildingType}
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Paper sx={{ 
+                      p: 1.5, 
+                      bgcolor: 'background.default',
+                      border: 1,
+                      borderColor: 'divider'
+                    }}>
+                      <Typography variant="body2" color="textSecondary">
+                        Floor Count
+                      </Typography>
+                      <Typography variant="body1">
+                        {locationInfo.floorCount} Floors
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+
+                <Grid container spacing={3}>
+                  <Grid item xs={12} md={6}>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="body2" color="textSecondary" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <span>📍</span> {locationInfo.address}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <span>🕒</span> {locationInfo.timezone}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <span>🌍</span> {locationInfo.coordinates}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <span>🌐</span> {locationInfo.networkRegion}
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <span>🔌</span> {locationInfo.ipAddress}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Box 
+                      component="iframe"
+                      src="https://www.openstreetmap.org/export/embed.html?bbox=-0.1377,51.5000,-0.1177,51.5150&layer=mapnik&marker=51.5074,-0.1278"
+                      sx={{
+                        width: '100%',
+                        height: 200,
+                        border: 1,
+                        borderColor: 'divider',
+                        borderRadius: 1
+                      }}
+                      frameBorder="0"
+                      title="London HQ Location"
+                    />
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={1}>
+        <DeviceManagement />
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={2}>
+        <SecurityMonitoring />
+      </TabPanel>
+    </Box>
   );
-} 
+};
+
+export default Dashboard; 
